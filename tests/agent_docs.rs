@@ -7,7 +7,7 @@
 
 use std::process::Command;
 
-use agent_inbox::agentdocs::{self, Target};
+use agent_inbox::agentdocs::{self, Dirs, Target};
 
 fn bin() -> Command {
     Command::new(env!("CARGO_BIN_EXE_agent-inbox"))
@@ -63,7 +63,8 @@ fn installing_creates_a_pointer_not_a_copy() {
     let project = tempfile::tempdir().unwrap();
     std::fs::create_dir_all(home.path().join(".claude")).unwrap();
 
-    let done = agentdocs::install(Target::Claude, home.path(), project.path()).unwrap();
+    let done =
+        agentdocs::install(Target::Claude, &Dirs::defaults(home.path()), project.path()).unwrap();
     assert!(done.updated);
 
     let skill = std::fs::read_to_string(&done.path).unwrap();
@@ -85,11 +86,13 @@ fn installing_twice_changes_nothing_the_second_time() {
     let project = tempfile::tempdir().unwrap();
 
     for target in Target::all() {
-        let first = agentdocs::install(target, home.path(), project.path()).unwrap();
+        let first =
+            agentdocs::install(target, &Dirs::defaults(home.path()), project.path()).unwrap();
         assert!(first.updated, "{} should install", target.label());
         let after_first = std::fs::read_to_string(&first.path).unwrap();
 
-        let second = agentdocs::install(target, home.path(), project.path()).unwrap();
+        let second =
+            agentdocs::install(target, &Dirs::defaults(home.path()), project.path()).unwrap();
         assert!(!second.updated, "{} rewrote itself", target.label());
         assert_eq!(after_first, std::fs::read_to_string(&second.path).unwrap());
     }
@@ -104,7 +107,12 @@ fn installing_never_damages_a_human_written_agents_file() {
     let original = "# House rules\n\nAlways run the linter.\n";
     std::fs::write(&agents, original).unwrap();
 
-    agentdocs::install(Target::AgentsMd, home.path(), project.path()).unwrap();
+    agentdocs::install(
+        Target::AgentsMd,
+        &Dirs::defaults(home.path()),
+        project.path(),
+    )
+    .unwrap();
     let after = std::fs::read_to_string(&agents).unwrap();
 
     assert!(
@@ -120,10 +128,10 @@ fn auto_detection_skips_harnesses_that_are_not_present() {
     let home = tempfile::tempdir().unwrap();
     std::fs::create_dir_all(home.path().join(".claude")).unwrap();
 
-    assert!(Target::Claude.detected(home.path()));
-    assert!(!Target::Codex.detected(home.path()));
+    assert!(Target::Claude.detected(&Dirs::defaults(home.path())));
+    assert!(!Target::Codex.detected(&Dirs::defaults(home.path())));
     // AGENTS.md is a convention rather than an installation, so it always applies.
-    assert!(Target::AgentsMd.detected(home.path()));
+    assert!(Target::AgentsMd.detected(&Dirs::defaults(home.path())));
 }
 
 #[test]

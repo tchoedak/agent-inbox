@@ -28,6 +28,40 @@ reports exist.";
 const BEGIN: &str = "<!-- agent-inbox:begin -->";
 const END: &str = "<!-- agent-inbox:end -->";
 
+/// Resolved harness config directories.
+///
+/// Both are relocatable by environment variable, and people do relocate them -
+/// a config dir at the default path is an assumption, not a fact. Writing an
+/// adapter to the wrong directory fails silently: the file exists, and the
+/// agent never reads it.
+///
+/// Resolved once at the edge and passed in, rather than read from process env
+/// deep in the call stack, so this is testable without mutating global state.
+#[derive(Debug, Clone)]
+pub struct Dirs {
+    pub claude: PathBuf,
+    pub codex: PathBuf,
+}
+
+impl Dirs {
+    pub fn from_env(home: &Path) -> Self {
+        let env = |var: &str| std::env::var_os(var).map(PathBuf::from);
+        Self {
+            claude: env("CLAUDE_CONFIG_DIR").unwrap_or_else(|| home.join(".claude")),
+            codex: env("CODEX_HOME").unwrap_or_else(|| home.join(".codex")),
+        }
+    }
+
+    /// Defaults with no environment consulted. For tests, and for callers that
+    /// want the documented locations regardless of how this process was run.
+    pub fn defaults(home: &Path) -> Self {
+        Self {
+            claude: home.join(".claude"),
+            codex: home.join(".codex"),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Target {
     /// A Claude Code skill: frontmatter carries the trigger, body points at the guide.
@@ -51,41 +85,29 @@ impl Target {
         }
     }
 
-    /// The harness's config directory.
-    ///
-    /// Both of these are relocatable by environment variable, and people do
-    /// relocate them - a config dir at the default path is an assumption, not a
-    /// fact. Writing an adapter to the wrong directory fails silently: the file
-    /// exists, and the agent never reads it.
-    pub fn config_dir(self, home: &Path) -> Option<PathBuf> {
-        let from_env = |var: &str| std::env::var_os(var).map(PathBuf::from);
+    /// The harness's config directory, per the resolved [`Dirs`].
+    pub fn config_dir(self, dirs: &Dirs) -> Option<PathBuf> {
         match self {
-            Target::Claude => Some(from_env("CLAUDE_CONFIG_DIR").unwrap_or(home.join(".claude"))),
-            Target::Codex => Some(from_env("CODEX_HOME").unwrap_or(home.join(".codex"))),
+            Target::Claude => Some(dirs.claude.clone()),
+            Target::Codex => Some(dirs.codex.clone()),
             Target::AgentsMd => None,
         }
     }
 
     /// Where this adapter lives. `project` is the directory an AGENTS.md would
     /// be written into.
-    pub fn path(self, home: &Path, project: &Path) -> PathBuf {
+    pub fn path(self, dirs: &Dirs, project: &Path) -> PathBuf {
         match self {
-            Target::Claude => self
-                .config_dir(home)
-                .expect("claude has a config dir")
-                .join("skills/agent-inbox/SKILL.md"),
-            Target::Codex => self
-                .config_dir(home)
-                .expect("codex has a config dir")
-                .join("AGENTS.md"),
+            Target::Claude => dirs.claude.join("skills/agent-inbox/SKILL.md"),
+            Target::Codex => dirs.codex.join("AGENTS.md"),
             Target::AgentsMd => project.join("AGENTS.md"),
         }
     }
 
     /// Whether this harness looks present, so auto-detection can skip the rest.
     /// AGENTS.md is always eligible: it is a convention, not an installation.
-    pub fn detected(self, home: &Path) -> bool {
-        match self.config_dir(home) {
+    pub fn detected(self, dirs: &Dirs) -> bool {
+        match self.config_dir(dirs) {
             Some(dir) => dir.is_dir(),
             None => true,
         }
@@ -139,8 +161,8 @@ pub struct Installed {
     pub updated: bool,
 }
 
-pub fn install(target: Target, home: &Path, project: &Path) -> Result<Installed> {
-    let path = target.path(home, project);
+pub fn install(target: Target, dirs: &Dirs, project: &Path) -> Result<Installed> {
+    let path = target.path(dirs, project);
     let parent = path
         .parent()
         .context("adapter path has no parent directory")?;
@@ -202,19 +224,21 @@ mod tests {
     use super::*;
 
     #[test]
-    fn claude_config_dir_honours_the_environment() {
+    fn a_relocated_config_dir_is_honoured() {
         // Regression: the installer hardcoded ~/.claude, so on a machine with
         // CLAUDE_CONFIG_DIR set the skill was written where nothing reads it.
         // The install reported success and the agent never saw it.
         let home = Path::new("/home/someone");
-        unsafe { std::env::set_var("CLAUDE_CONFIG_DIR", "/home/someone/.claude-personal") };
+        let relocated = Dirs {
+            claude: home.join(".claude-personal"),
+            codex: home.join(".codex"),
+        };
         assert_eq!(
-            Target::Claude.path(home, Path::new("/tmp")),
+            Target::Claude.path(&relocated, Path::new("/tmp")),
             Path::new("/home/someone/.claude-personal/skills/agent-inbox/SKILL.md")
         );
-        unsafe { std::env::remove_var("CLAUDE_CONFIG_DIR") };
         assert_eq!(
-            Target::Claude.path(home, Path::new("/tmp")),
+            Target::Claude.path(&Dirs::defaults(home), Path::new("/tmp")),
             Path::new("/home/someone/.claude/skills/agent-inbox/SKILL.md")
         );
     }

@@ -28,21 +28,56 @@ trading-perf   daily   24 editions   latest 2026-08-13   Daily trading performan
 Reports are never stored inside the database.
 Artifacts stay ordinary files in a documented layout, so a corrupt index still leaves every report readable with `ls` and `cat`.
 
+## Reading
+
+Run `agent-inbox` with no arguments.
+
+```
+┌ topics ──────────────────────────┐┌ 2026-08-13  (1 of 2) ────────────────────────────────────┐
+│● Daily trading performance 08-13 ││Daily trading performance                                 │
+│  Job scrape               08-12  ││                                                          │
+│                                  ││  • Total Day P&L: -242.00                                │
+└──────────────────────────────────┘└──────────────────────────────────────────────────────────┘
+ j/k move · enter read · [ ] older/newer · o browser · r refresh · ? help · q quit
+```
+
+Topic-first: the left pane lists topics, the right shows the selected topic's current edition, and
+`[` / `]` page backward and forward through that topic's history.
+
+| Key | |
+| --- | --- |
+| `j` `k` `↓` `↑` | move, or scroll while reading |
+| `enter` `l` `→` | read the selected topic |
+| `esc` `h` `←` | back to the topic list |
+| `[` `]` | older / newer edition |
+| `d` `u` | page down / up |
+| `o` | open the report in a browser |
+| `r` | refresh now |
+| `?` | keys |
+| `q` | quit |
+
+`●` marks a topic whose latest edition you have not read. Opening it clears the marker; paging back
+through history does not, because skimming backward is not the same as reading.
+
+New reports appear on their own. The index is polled every two seconds, and nothing a poll finds is
+allowed to move what you are currently reading.
+
+Markdown `terminal` artifacts are styled directly. An edition with only HTML falls back to
+`w3m -dump`, which is the one converter with a real table layout engine - install `w3m` if your
+producers emit HTML without a markdown rendition.
+
 ## Status
 
-**Early. The ingest half is done and in daily use; the reading half is not built yet.**
+**Early, but usable daily.**
 
 | | |
 | --- | --- |
 | `emit`, the store, topics and history | working, tested |
 | Agent integration (`agent-guide`, adapters) | working, tested |
-| `topics` / `editions` listing | working |
-| **Terminal UI for browsing and reading** | **not built yet** |
-| Read/unread state, retention | not built yet |
-| Noticing that a report stopped arriving | not built yet |
-
-Until the TUI lands, reading means `agent-inbox editions --topic <slug>` and opening the artifact
-yourself. The store layout is documented and stable, so that is a one-liner.
+| Reader TUI, live updates, read state | working, tested |
+| Retention and pruning | not built - nothing is ever deleted |
+| Noticing that a report stopped arriving | not built |
+| Search across history, diffing editions | not built |
 
 ## Install
 

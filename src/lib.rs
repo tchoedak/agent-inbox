@@ -7,8 +7,10 @@
 pub mod agentdocs;
 pub mod emit;
 pub mod query;
+pub mod render;
 pub mod slug;
 pub mod store;
+pub mod tui;
 
 use chrono::SecondsFormat;
 

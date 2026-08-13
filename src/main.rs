@@ -3,7 +3,7 @@ use std::process::ExitCode;
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 
-use agent_inbox::agentdocs::{self, Target};
+use agent_inbox::agentdocs::{self, Dirs, Target};
 use agent_inbox::emit::{ArtifactSpec, EmitRequest, emit};
 use agent_inbox::query;
 use agent_inbox::store::Store;
@@ -20,7 +20,7 @@ struct Cli {
     home: Option<std::path::PathBuf>,
 
     #[command(subcommand)]
-    command: Command,
+    command: Option<Command>,
 }
 
 #[derive(Subcommand)]
@@ -122,12 +122,21 @@ fn main() -> ExitCode {
 fn run() -> Result<()> {
     let cli = Cli::parse();
 
+    // Bare `agent-inbox` opens the reader.
+    let Some(command) = cli.command else {
+        let root = match cli.home {
+            Some(path) => path,
+            None => Store::default_root()?,
+        };
+        return agent_inbox::tui::run(&Store::open(&root)?);
+    };
+
     // Printing the guide must work anywhere, including where no store exists.
-    if let Command::AgentGuide = cli.command {
+    if let Command::AgentGuide = command {
         print!("{}", agentdocs::GUIDE);
         return Ok(());
     }
-    if let Command::InstallAgentDocs { target, project } = cli.command {
+    if let Command::InstallAgentDocs { target, project } = command {
         return install_agent_docs(target, project);
     }
 
@@ -137,7 +146,7 @@ fn run() -> Result<()> {
     };
     let store = Store::open(&root)?;
 
-    match cli.command {
+    match command {
         Command::AgentGuide | Command::InstallAgentDocs { .. } => unreachable!("handled above"),
 
         Command::Topics => {
@@ -231,11 +240,13 @@ fn install_agent_docs(targets: Vec<String>, project: Option<std::path::PathBuf>)
         None => std::env::current_dir()?,
     };
 
+    let dirs = Dirs::from_env(&home);
+
     let chosen: Vec<Target> = if targets.is_empty() {
         // Nothing named: install where a harness actually appears to live.
         Target::all()
             .into_iter()
-            .filter(|t| t.detected(&home))
+            .filter(|t| t.detected(&dirs))
             .collect()
     } else if targets.iter().any(|t| t == "all") {
         Target::all().to_vec()
@@ -247,7 +258,7 @@ fn install_agent_docs(targets: Vec<String>, project: Option<std::path::PathBuf>)
     };
 
     for target in chosen {
-        let done = agentdocs::install(target, &home, &project)?;
+        let done = agentdocs::install(target, &dirs, &project)?;
         println!(
             "{} {} -> {}",
             if done.updated { "wrote" } else { "unchanged" },
