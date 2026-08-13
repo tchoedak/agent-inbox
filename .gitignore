@@ -1,0 +1,24 @@
+/target
+
+# Planning and research artifacts. Local only.
+# These held real report content - account numbers and balances - which is
+# exactly why they are not in a repo destined to be public.
+.wayfinder/
+
+# Never commit reports or report content. This tool's whole job is handling
+# real output from real systems, so a fixture is a leak waiting to happen.
+# Test data must be fabricated and live under tests/.
+*.report.*
+perf-report-*
+report-*.html
+report-*.md
+/reports/
+/artifacts/
+
+# Local store, if anyone points AGENT_INBOX_HOME at the checkout.
+/index.db
+/index.db-wal
+/index.db-shm
+/.staging/
+
+.DS_Store

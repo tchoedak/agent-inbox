@@ -1,0 +1,25 @@
+[package]
+name = "agent-inbox"
+version = "0.1.0"
+edition = "2024"
+description = "A local inbox for reports produced on a schedule, with a topic-first history and an emit contract any coding agent can wire into."
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/tchoedak/agent-inbox"
+readme = "README.md"
+keywords = ["cli", "reports", "cron", "inbox", "agents"]
+categories = ["command-line-utilities"]
+# Defence in depth. .wayfinder is gitignored, so cargo would not package it
+# anyway, but this crate ships to a registry where a published version can
+# never be deleted - only yanked, and yanked files stay downloadable.
+exclude = [".wayfinder", "docs/internal"]
+
+[dependencies]
+anyhow = "1"
+chrono = "0.4"
+clap = { version = "4", features = ["derive"] }
+rusqlite = { version = "0.40", features = ["bundled"] }
+strsim = "0.11"
+uuid = { version = "1", features = ["v4"] }
+
+[dev-dependencies]
+tempfile = "3"
