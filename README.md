@@ -1,12 +1,59 @@
 # agent-inbox
 
-A local inbox for reports produced on a schedule.
+[![CI](https://github.com/nure-ai/agent-inbox/actions/workflows/ci.yml/badge.svg)](https://github.com/nure-ai/agent-inbox/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue)](#license)
 
-Apps that generate a report - daily, weekly, hourly - call `agent-inbox emit` when they finish.
-The inbox copies the artifacts into its own store, keyed by topic and date, so you have one place to look every morning and history survives the producing app being tidied up or deleted.
+**A local inbox for reports produced on a schedule.**
+
+You keep building apps that generate a report every day - a trading summary, a scrape, a scan, a digest.
+Each one drops a file somewhere different, and reading them means remembering where they all are.
+
+agent-inbox gives them one destination.
+Apps call `agent-inbox emit` when they finish, and the inbox copies the artifacts into its own store, keyed by **topic** and **date**.
+One place to look each morning, with history per topic, and that history survives the producing app being tidied up or deleted outright.
+
+Coding agents get this for free: `agent-inbox agent-guide` prints the full integration contract, so an agent building your next scheduled job can wire it in without being told how.
+
+```sh
+# in your daily job, once it has produced the report
+agent-inbox emit --topic trading-perf --cadence daily \
+    --artifact report.md:terminal --artifact report.html:primary
+```
+
+```console
+$ agent-inbox topics
+trading-perf   daily   24 editions   latest 2026-08-13   Daily trading performance
+```
 
 Reports are never stored inside the database.
 Artifacts stay ordinary files in a documented layout, so a corrupt index still leaves every report readable with `ls` and `cat`.
+
+## Status
+
+**Early. The ingest half is done and in daily use; the reading half is not built yet.**
+
+| | |
+| --- | --- |
+| `emit`, the store, topics and history | working, tested |
+| Agent integration (`agent-guide`, adapters) | working, tested |
+| `topics` / `editions` listing | working |
+| **Terminal UI for browsing and reading** | **not built yet** |
+| Read/unread state, retention | not built yet |
+| Noticing that a report stopped arriving | not built yet |
+
+Until the TUI lands, reading means `agent-inbox editions --topic <slug>` and opening the artifact
+yourself. The store layout is documented and stable, so that is a one-liner.
+
+## Install
+
+```sh
+cargo install --path .      # from a checkout
+```
+
+Make sure the install directory is on your `PATH`, including for whatever runs your scheduled jobs.
+Cron does not read your shell profile, so use an absolute path or set `PATH` in the crontab.
+
+SQLite is bundled into the binary. There is nothing else to install.
 
 ## Emitting
 
@@ -133,11 +180,28 @@ The index is written in a single transaction per emit.
 A crash between them leaves an orphaned artifact directory that no index row references.
 That is garbage rather than corruption, and it is the right failure asymmetry: there is never a visible edition with missing files.
 
-## Development
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ```sh
 cargo test
 cargo clippy --all-targets
+cargo fmt --all
 ```
 
-Design decisions and their reasoning live in `.wayfinder/`.
+One rule worth repeating here: **never commit a real report**, as a fixture, an example, or an issue
+attachment. This tool collects real output from real systems, so a convenient real example is a data
+leak waiting to happen. Fabricate test data. CI enforces the packaging half of this.
+
+## License
+
+Dual-licensed under either of
+
+- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE))
+- MIT license ([LICENSE-MIT](LICENSE-MIT))
+
+at your option.
+
+Unless you explicitly state otherwise, any contribution you intentionally submit for inclusion in
+this work shall be dual-licensed as above, without any additional terms or conditions.
