@@ -9,3 +9,7 @@ updates:
     directory: "/"
     schedule:
       interval: monthly
+    ignore:
+      # The MSRV job pins the minimum supported Rust version. Dependabot would
+      # bump it to the latest release, which defeats the job's purpose.
+      - dependency-name: "dtolnay/rust-toolchain"
