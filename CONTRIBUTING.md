@@ -6,7 +6,7 @@ large change will save everyone time - open an issue first for anything structur
 ## Getting set up
 
 ```sh
-git clone https://github.com/nure-ai/agent-inbox
+git clone https://github.com/tchoedak/agent-inbox
 cd agent-inbox
 cargo test
 ```

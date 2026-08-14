@@ -3,7 +3,7 @@
 ## Reporting a vulnerability
 
 Report security issues privately through GitHub's
-[private vulnerability reporting](https://github.com/nure-ai/agent-inbox/security/advisories/new).
+[private vulnerability reporting](https://github.com/tchoedak/agent-inbox/security/advisories/new).
 Please do not open a public issue for a vulnerability.
 
 Expect an acknowledgement within a week.
