@@ -19,6 +19,10 @@ struct Cli {
     #[arg(long, global = true)]
     home: Option<std::path::PathBuf>,
 
+    /// Do not play a sound when a new report arrives in the reader.
+    #[arg(long, global = true)]
+    no_sound: bool,
+
     #[command(subcommand)]
     command: Option<Command>,
 }
@@ -128,7 +132,7 @@ fn run() -> Result<()> {
             Some(path) => path,
             None => Store::default_root()?,
         };
-        return agent_inbox::tui::run(&Store::open(&root)?);
+        return agent_inbox::tui::run(&Store::open(&root)?, !cli.no_sound);
     };
 
     // Printing the guide must work anywhere, including where no store exists.

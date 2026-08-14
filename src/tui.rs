@@ -22,6 +22,7 @@ use ratatui::widgets::{Block, Borders, Clear, List, ListItem, ListState, Paragra
 
 use crate::query::{self, EditionDetail, TopicSummary};
 use crate::render;
+use crate::sound;
 use crate::store::Store;
 
 const POLL: Duration = Duration::from_secs(2);
@@ -44,10 +45,11 @@ struct App {
     status: Option<String>,
     token: (i64, i64),
     last_poll: Instant,
+    sound: bool,
 }
 
 impl App {
-    fn new(store: &Store) -> Result<Self> {
+    fn new(store: &Store, sound: bool) -> Result<Self> {
         let mut app = App {
             topics: Vec::new(),
             topic_state: ListState::default(),
@@ -60,6 +62,7 @@ impl App {
             status: None,
             token: (0, 0),
             last_poll: Instant::now(),
+            sound,
         };
         app.reload(store, None)?;
         if !app.topics.is_empty() {
@@ -176,13 +179,13 @@ impl App {
     }
 }
 
-pub fn run(store: &Store) -> Result<()> {
+pub fn run(store: &Store, sound: bool) -> Result<()> {
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     stdout.execute(EnterAlternateScreen)?;
     let mut terminal = Terminal::new(CrosstermBackend::new(stdout))?;
 
-    let result = event_loop(&mut terminal, store);
+    let result = event_loop(&mut terminal, store, sound);
 
     disable_raw_mode()?;
     execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
@@ -190,8 +193,8 @@ pub fn run(store: &Store) -> Result<()> {
     result
 }
 
-fn event_loop<B: Backend>(terminal: &mut Terminal<B>, store: &Store) -> Result<()> {
-    let mut app = App::new(store)?;
+fn event_loop<B: Backend>(terminal: &mut Terminal<B>, store: &Store, sound: bool) -> Result<()> {
+    let mut app = App::new(store, sound)?;
 
     loop {
         terminal.draw(|f| draw(f, &mut app))?;
@@ -255,6 +258,9 @@ fn event_loop<B: Backend>(terminal: &mut Terminal<B>, store: &Store) -> Result<(
                     app.render_current();
                 }
                 app.status = Some("new report arrived".into());
+                if app.sound {
+                    sound::play();
+                }
             }
         }
     }
@@ -411,6 +417,10 @@ fn draw_help(f: &mut Frame) {
             "  New reports appear on their own, every two seconds.",
             Style::default().fg(Color::DarkGray),
         )),
+        Line::from(Span::styled(
+            "  A sound plays when one arrives (--no-sound to mute).",
+            Style::default().fg(Color::DarkGray),
+        )),
     ];
     f.render_widget(
         Paragraph::new(text).block(
@@ -497,7 +507,7 @@ mod tests {
     #[test]
     fn shows_the_newest_edition_of_the_selected_topic() {
         let (_s, _w, store) = fixture();
-        let mut app = App::new(&store).unwrap();
+        let mut app = App::new(&store, true).unwrap();
         let out = frame(&mut app);
         assert!(out.contains("Daily trading performance"), "{out}");
         assert!(
@@ -511,7 +521,7 @@ mod tests {
     #[test]
     fn an_unread_topic_is_marked_and_reading_clears_it() {
         let (_s, _w, store) = fixture();
-        let mut app = App::new(&store).unwrap();
+        let mut app = App::new(&store, true).unwrap();
         assert!(frame(&mut app).contains('●'), "expected an unread marker");
 
         app.open_selected(&store).unwrap();
@@ -525,7 +535,7 @@ mod tests {
     #[test]
     fn paging_back_shows_history_without_marking_it_read() {
         let (_s, _w, store) = fixture();
-        let mut app = App::new(&store).unwrap();
+        let mut app = App::new(&store, true).unwrap();
         app.open_selected(&store).unwrap();
 
         app.step_edition(1); // older
@@ -546,7 +556,7 @@ mod tests {
     #[test]
     fn a_report_arriving_does_not_move_what_you_are_reading() {
         let (_s, work, store) = fixture();
-        let mut app = App::new(&store).unwrap();
+        let mut app = App::new(&store, true).unwrap();
         app.open_selected(&store).unwrap();
         app.step_edition(1);
         app.scroll = 3;
@@ -589,7 +599,7 @@ mod tests {
     #[test]
     fn print_a_real_frame() {
         let (_s, _w, store) = fixture();
-        let mut app = App::new(&store).unwrap();
+        let mut app = App::new(&store, true).unwrap();
         println!("\n{}\n", frame(&mut app));
         app.open_selected(&store).unwrap();
         app.show_help = true;

@@ -1,6 +1,6 @@
 # agent-inbox
 
-[![CI](https://github.com/nure-ai/agent-inbox/actions/workflows/ci.yml/badge.svg)](https://github.com/nure-ai/agent-inbox/actions/workflows/ci.yml)
+[![CI](https://github.com/tchoedak/agent-inbox/actions/workflows/ci.yml/badge.svg)](https://github.com/tchoedak/agent-inbox/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue)](#license)
 
 **A local inbox for reports produced on a schedule.**
@@ -61,6 +61,9 @@ through history does not, because skimming backward is not the same as reading.
 
 New reports appear on their own. The index is polled every two seconds, and nothing a poll finds is
 allowed to move what you are currently reading.
+
+A short sound plays when a new unread report arrives, using the platform's system audio player
+(`afplay` on macOS). Mute it with `agent-inbox --no-sound`, or set `AGENT_INBOX_DISABLE_SOUND=1`.
 
 Markdown `terminal` artifacts are styled directly. An edition with only HTML falls back to
 `w3m -dump`, which is the one converter with a real table layout engine - install `w3m` if your
