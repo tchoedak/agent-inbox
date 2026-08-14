@@ -115,18 +115,19 @@ impl App {
     fn open_selected(&mut self, store: &Store) -> Result<()> {
         self.focus = Focus::Reading;
         self.scroll = 0;
-        if let Some(e) = self.editions.first() {
-            if self.edition_idx == 0 && !e.read {
-                query::mark_read(store, e.id)?;
-                self.reload(store, None)?;
-                self.editions = query::edition_details(
-                    store,
-                    &self
-                        .selected_topic()
-                        .map(|t| t.slug.clone())
-                        .unwrap_or_default(),
-                )?;
-            }
+        if let Some(e) = self.editions.first()
+            && self.edition_idx == 0
+            && !e.read
+        {
+            query::mark_read(store, e.id)?;
+            self.reload(store, None)?;
+            self.editions = query::edition_details(
+                store,
+                &self
+                    .selected_topic()
+                    .map(|t| t.slug.clone())
+                    .unwrap_or_default(),
+            )?;
         }
         self.render_current();
         Ok(())
